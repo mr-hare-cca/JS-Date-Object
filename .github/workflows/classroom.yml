@@ -16,11 +16,11 @@ jobs:
         with:
           node-version: 20
 
+      # ... (Install, setup, and config steps are all correct) ...
       - name: Install test deps
         run: |
           npm init -y >/dev/null 2>&1 || true
           npm install --save-dev jest@29 jsdom@21 jest-environment-jsdom@29
-
       - name: Write jest setup
         run: |
           cat > jest.setup.cjs <<'EOF'
@@ -28,7 +28,6 @@ jobs:
           if (typeof global.TextEncoder === 'undefined') global.TextEncoder = TextEncoder;
           if (typeof global.TextDecoder === 'undefined') global.TextDecoder = TextDecoder;
           EOF
-
       - name: Write jest config
         run: |
           cat > jest.config.cjs <<'EOF'
@@ -38,7 +37,8 @@ jobs:
             testMatch: ['**/__tests__/**/*.test.cjs']
           };
           EOF
-
+      
+      # ... (Write tests step is correct) ...
       - name: Write tests
         run: |
           mkdir -p __tests__
@@ -106,13 +106,10 @@ jobs:
               const btn = document.getElementById('myBtn');
               expect(btn).not.toBeNull();
               expect(btn.getAttribute('onclick')).toBeNull();
-              // best-effort check: listeners exist (jsdom cannot list them reliably)
-              // We rely on functional tests below to prove it works.
             });
 
             test('date format looks like "Day, M/D/YYYY" and matches today', () => {
               const s = text(document, 'myDate');
-              // Basic shape: <word>, <num>/<num>/<num>
               expect(/^[A-Za-z]+,\s*\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)).toBe(true);
 
               const [head, tail] = s.split(',');
@@ -130,7 +127,7 @@ jobs:
               const before = parseFloat(text(document, 'myTimer') || '0');
               await wait(140);
               const after = parseFloat(text(document, 'myTimer') || '0');
-              expect(after).toBeGreaterThan(before + 0.05); // at least 0.05s advance
+              expect(after).toBeGreaterThan(before + 0.05);
             });
 
             test('toggle button stops and resumes timer, text flips Start/Stop', async () => {
@@ -139,7 +136,7 @@ jobs:
               click(document, 'myBtn'); // stop
               await wait(150);
               const v2 = parseFloat(text(document, 'myTimer') || '0');
-              expect(v2).toBeCloseTo(v1, 2); // should not change while stopped
+              expect(v2).toBeCloseTo(v1, 2);
               expect(btn.textContent.trim().toLowerCase()).toBe('start');
 
               click(document, 'myBtn'); // start
@@ -150,7 +147,6 @@ jobs:
             });
 
             test('elapsed time is monotonic while running', async () => {
-              // ensure running (if currently stopped, click to start)
               const btn = byId(document, 'myBtn');
               if (btn.textContent.trim().toLowerCase() === 'start') {
                 click(document, 'myBtn');
@@ -188,13 +184,17 @@ jobs:
           timeout: 60
           max-score: 15
 
+      #
+      # ⬇️ *** THIS IS THE FIX *** ⬇️
+      #
       - id: tDateFormat
         name: date format and today match
         uses: classroom-resources/autograding-command-grader@v1
         with:
           test-name: date format and today match
           setup-command: echo "ready"
-          command: npx jest --runInBand --testNamePattern "date format looks like \"Day, M/D/YYYY\" and matches today$"
+          # Use single quotes to wrap the whole command so the inner double quotes are preserved
+          command: 'npx jest --runInBand --testNamePattern "date format looks like \"Day, M/D/YYYY\" and matches today$"'
           timeout: 60
           max-score: 20
 
@@ -228,7 +228,7 @@ jobs:
           timeout: 60
           max-score: 15
 
-      # Build & publish combined summary (console + Summary tab)
+      # ... (Summary and reporter steps are correct) ...
       - name: Build & publish combined summary (console + Summary tab)
         shell: bash
         run: |
@@ -279,8 +279,6 @@ jobs:
           const summaryPath = process.env.GITHUB_STEP_SUMMARY;
           if (summaryPath) fs.appendFileSync(summaryPath, md + '\n');
           NODE
-
-      # Prepare reporter env (names must match "T_<runnerId>_RESULTS" exactly; using camelCase to avoid underscore issues)
       - name: Prepare reporter env
         id: prepEnv
         shell: bash
@@ -291,11 +289,8 @@ jobs:
           echo "T_tTimerRuns_RESULTS=${{ steps.tTimerRuns.outputs.result }}"         >> "$GITHUB_ENV"
           echo "T_tToggleWorks_RESULTS=${{ steps.tToggleWorks.outputs.result }}"     >> "$GITHUB_ENV"
           echo "T_tElapsedMonotonic_RESULTS=${{ steps.tElapsedMonotonic.outputs.result }}" >> "$GITHUB_ENV"
-
-      # Report to Classroom (runner list must match step IDs exactly)
       - name: Report grades
         uses: classroom-resources/autograding-grading-reporter@v1
         with:
           runners: 'tRequired,tListener,tDateFormat,tTimerRuns,tToggleWorks,tElapsedMonotonic'
           token: ${{ github.token }}
-
