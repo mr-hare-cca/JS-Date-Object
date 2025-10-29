@@ -1,12 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>JS | Variables and Methods</title>
-    <script src="script.js"></script>
-</head>
-<body>
-    <h1>Your html goes here...</h1>
-    <br>See the <a href="README.md">README</a> for project details
-</body>  
-</html>
+<div id="myDate"></div>
+<div id="myTimer"></div>
+<button id="myBtn">Stop</button>
+
+<script>
+  function formatDate(d) {
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const dow = days[d.getDay()];
+    const month = d.getMonth() + 1;
+    const day   = d.getDate();
+    const year  = d.getFullYear();
+    return `${dow}, ${month}/${day}/${year}`;
+  }
+
+  // Print date
+  document.getElementById('myDate').textContent = formatDate(new Date());
+
+  // Timer
+  let start = new Date().getTime();
+  const tick = () => {
+    const now = new Date().getTime();
+    const secs = (now - start) / 1000;
+    document.getElementById('myTimer').textContent = secs.toFixed(2);
+  };
+  let timerId = setInterval(tick, 10);
+
+  // Toggle
+  const btn = document.getElementById('myBtn');
+  btn.addEventListener('click', () => {
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+      btn.textContent = 'Start';
+    } else {
+      start = new Date().getTime() - parseFloat(document.getElementById('myTimer').textContent || '0')*1000;
+      timerId = setInterval(tick, 10);
+      btn.textContent = 'Stop';
+    }
+  });
+</script>
